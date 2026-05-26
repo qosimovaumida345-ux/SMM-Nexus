@@ -81,7 +81,7 @@ async function api(endpoint, method = 'GET', data = null) {
         method,
         headers: { 'Content-Type': 'application/json' }
     };
-    if (currentToken) options.headers['x-auth-token'] = currentToken;
+    if (currentToken) options.headers['Authorization'] = `Bearer ${currentToken}`;
     if (data) options.body = JSON.stringify(data);
 
     try {
