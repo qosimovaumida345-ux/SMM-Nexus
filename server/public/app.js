@@ -87,7 +87,7 @@ async function api(endpoint, method = 'GET', data = null) {
     try {
         const res = await fetch(`${API_URL}${endpoint}`, options);
         const json = await res.json();
-        if (!res.ok) throw new Error(json.msg || 'Xatolik yuz berdi');
+        if (!res.ok) throw new Error(json.message || json.error || 'Xatolik yuz berdi');
         return json;
     } catch (err) {
         throw err;
