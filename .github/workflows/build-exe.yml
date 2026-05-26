@@ -1,0 +1,35 @@
+name: Build Worker EXE
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'worker/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+
+      - name: Install Dependencies
+        working-directory: ./worker
+        run: npm install
+
+      - name: Build EXE with pkg
+        working-directory: ./worker
+        run: npx pkg . --targets node18-win-x64 --output dist/SMM-Nexus-Worker.exe
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: SMM-Nexus-Worker
+          path: worker/dist/SMM-Nexus-Worker.exe

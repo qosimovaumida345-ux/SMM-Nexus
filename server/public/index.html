@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMM NEXUS | Premium Automation Panel</title>
+    <meta name="description" content="Professional SMM Automation Dashboard - Instagram, YouTube, TikTok, Roblox va boshqa platformalar uchun">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="particles-bg"></div>
+
+    <div id="app">
+        <div id="auth-screen">
+            <div class="auth-container">
+                <div class="auth-glow"></div>
+                <div class="auth-card">
+                    <div class="auth-logo">
+                        <span class="logo-icon">N</span>
+                        <span class="logo-text">SMM NEXUS</span>
+                    </div>
+
+                    <div id="login-form" class="auth-form active">
+                        <h2>Tizimga kirish</h2>
+                        <p class="auth-subtitle">Panelga kirish uchun maʼlumotlaringizni kiriting</p>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="login-username" placeholder="Username" required>
+                        </div>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="login-password" placeholder="Password" required>
+                        </div>
+                        <button id="login-btn" class="auth-btn" onclick="handleLogin()">
+                            <span>Kirish</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <p class="auth-switch">Akkaunt yoqmi? <a href="javascript:void(0)" onclick="showRegister()">Roʻyxatdan oʻtish</a></p>
+                    </div>
+
+                    <div id="register-form" class="auth-form">
+                        <h2>Roʻyxatdan oʻtish</h2>
+                        <p class="auth-subtitle">Yangi akkaunt yarating</p>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="reg-username" placeholder="Username" required>
+                        </div>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="reg-password" placeholder="Password" required>
+                        </div>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="reg-password-confirm" placeholder="Parolni tasdiqlash" required>
+                        </div>
+                        <button id="register-btn" class="auth-btn" onclick="handleRegister()">
+                            <span>Roʻyxatdan oʻtish</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <p class="auth-switch">Akkaunt bormi? <a href="javascript:void(0)" onclick="showLogin()">Kirish</a></p>
+                    </div>
+
+                    <div id="auth-error" class="auth-error"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard-screen" style="display:none;">
+            <nav class="sidebar">
+                <div class="sidebar-logo">
+                    <span class="logo-icon-sm">N</span>
+                    <span>NEXUS</span>
+                </div>
+                <ul class="sidebar-menu">
+                    <li class="active" onclick="showSection('overview')" id="nav-overview">
+                        <i class="fas fa-th-large"></i><span>Bosh sahifa</span>
+                    </li>
+                    <li onclick="showSection('new-order')" id="nav-new-order">
+                        <i class="fas fa-plus-circle"></i><span>Yangi buyurtma</span>
+                    </li>
+                    <li onclick="showSection('orders')" id="nav-orders">
+                        <i class="fas fa-list-alt"></i><span>Buyurtmalar</span>
+                    </li>
+                    <li onclick="showSection('accounts')" id="nav-accounts">
+                        <i class="fas fa-robot"></i><span>Akkauntlar</span>
+                    </li>
+                    <li onclick="showSection('download')" id="nav-download">
+                        <i class="fas fa-download"></i><span>Dasturni yukla</span>
+                    </li>
+                </ul>
+                <div class="sidebar-footer">
+                    <div class="worker-status">
+                        <span class="status-dot" id="worker-dot"></span>
+                        <span id="worker-status-text">Tekshirilmoqda...</span>
+                    </div>
+                    <button class="logout-btn" onclick="handleLogout()">
+                        <i class="fas fa-sign-out-alt"></i><span>Chiqish</span>
+                    </button>
+                </div>
+            </nav>
+
+            <main class="main-content">
+                <header class="top-bar">
+                    <h1 id="page-title">Bosh sahifa</h1>
+                    <div class="top-bar-right">
+                        <div class="user-info">
+                            <span id="display-username">User</span>
+                            <div class="user-avatar" id="user-avatar">U</div>
+                        </div>
+                    </div>
+                </header>
+
+                <div id="section-overview" class="section active">
+                    <div class="stats-grid">
+                        <div class="stat-card" style="--accent: #6366f1">
+                            <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-total">0</span>
+                                <span class="stat-label">Jami buyurtmalar</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="--accent: #06b6d4">
+                            <div class="stat-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-processing">0</span>
+                                <span class="stat-label">Jarayonda</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="--accent: #22c55e">
+                            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-completed">0</span>
+                                <span class="stat-label">Bajarilgan</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="--accent: #f59e0b">
+                            <div class="stat-icon"><i class="fas fa-robot"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-bots">0</span>
+                                <span class="stat-label">Faol botlar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recent-orders">
+                        <h3>Soʻnggi buyurtmalar</h3>
+                        <div id="recent-orders-list" class="orders-table-wrapper"></div>
+                    </div>
+                </div>
+
+                <div id="section-new-order" class="section">
+                    <div class="order-form-container">
+                        <div class="order-form-card">
+                            <h2>Yangi buyurtma yaratish</h2>
+
+                            <div class="platform-picker">
+                                <label>Platformani tanlang</label>
+                                <div class="platform-grid" id="platform-grid"></div>
+                            </div>
+
+                            <div class="input-wrapper">
+                                <i class="fas fa-cog"></i>
+                                <select id="order-service">
+                                    <option value="">Xizmat turini tanlang</option>
+                                </select>
+                            </div>
+
+                            <div class="input-wrapper">
+                                <i class="fas fa-link"></i>
+                                <input type="text" id="order-target" placeholder="Profil linki yoki username">
+                            </div>
+
+                            <div class="input-wrapper">
+                                <i class="fas fa-sort-numeric-up"></i>
+                                <input type="number" id="order-quantity" placeholder="Soni (masalan: 1000)" min="1">
+                            </div>
+
+                            <button class="order-submit-btn" onclick="submitOrder()">
+                                <span>Buyurtma berish</span>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="section-orders" class="section">
+                    <div class="orders-container">
+                        <h2>Mening buyurtmalarim</h2>
+                        <div id="orders-list" class="orders-table-wrapper"></div>
+                    </div>
+                </div>
+
+                <div id="section-accounts" class="section">
+                    <div class="accounts-container">
+                        <h2>Bot akkauntlar holati</h2>
+                        <div id="accounts-grid" class="accounts-grid"></div>
+                    </div>
+                </div>
+
+                <div id="section-download" class="section">
+                    <div class="download-container">
+                        <div class="download-card">
+                            <div class="download-icon"><i class="fas fa-desktop"></i></div>
+                            <h2>SMM Nexus Worker</h2>
+                            <p>Kompyuteringizga dasturni oʻrnating va avtomatik ishlashni boshlang</p>
+                            <a href="#" class="download-btn" id="download-link">
+                                <i class="fab fa-windows"></i>
+                                <span>Windows uchun yuklab olish (.exe)</span>
+                            </a>
+                            <div class="download-instructions">
+                                <h3>Oʻrnatish koʻrsatmasi</h3>
+                                <ol>
+                                    <li>Yuqoridagi tugma orqali dasturni yuklab oling</li>
+                                    <li>Dasturni ishga tushiring</li>
+                                    <li>Login qilish oynasiga username va passwordingizni kiriting</li>
+                                    <li>Proxies.txt fayliga proxylaringizni qoʻshing</li>
+                                    <li>Dastur avtomatik ravishda serverga ulanadi va vazifalarni bajaradi</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
