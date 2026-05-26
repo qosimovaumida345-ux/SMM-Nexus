@@ -7,9 +7,7 @@ const router = express.Router();
 
 function authenticateToken(req, res, next) {
     const token = req.headers.authorization;
-    if (!token) {
-        return res.status(401).json({ success: false, message: 'Token kerak' });
-    }
+    if (!token) return res.status(401).json({ success: false, message: 'Token kerak' });
 
     try {
         const cleanToken = token.replace('Bearer ', '');
@@ -27,7 +25,7 @@ const PLATFORM_SERVICES = {
     tiktok: ['followers', 'likes', 'views', 'comments', 'shares', 'saves', 'reposts'],
     youtube: ['subscribers', 'likes', 'views', 'comments', 'shares'],
     telegram: ['members', 'views', 'reactions', 'comments', 'shares'],
-    roblox: ['followers', 'friends', 'likes', 'plays'],
+    roblox: ['followers', 'friends', 'likes', 'plays', 'favorites', 'group_joins', 'reports'],
     twitter: ['followers', 'likes', 'views', 'comments', 'reposts', 'impressions'],
     facebook: ['followers', 'likes', 'views', 'comments', 'shares', 'reactions'],
     discord: ['members'],
@@ -41,10 +39,7 @@ const PLATFORM_SERVICES = {
 };
 
 router.get('/platforms', authenticateToken, (req, res) => {
-    res.json({
-        success: true,
-        platforms: PLATFORM_SERVICES
-    });
+    res.json({ success: true, platforms: PLATFORM_SERVICES });
 });
 
 router.post('/create', authenticateToken, async (req, res) => {
@@ -52,61 +47,59 @@ router.post('/create', authenticateToken, async (req, res) => {
         const { platform, service, target, quantity } = req.body;
 
         if (!platform || !service || !target || !quantity) {
-            return res.status(400).json({
-                success: false,
-                message: 'Barcha maydonlar toldirilishi shart'
-            });
+            return res.status(400).json({ success: false, message: 'Barcha maydonlar toldirilishi shart' });
         }
-
         if (!PLATFORM_SERVICES[platform]) {
-            return res.status(400).json({
-                success: false,
-                message: 'Notogri platforma'
-            });
+            return res.status(400).json({ success: false, message: 'Notogri platforma' });
         }
-
         if (!PLATFORM_SERVICES[platform].includes(service)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Bu platforma uchun bunday xizmat mavjud emas'
-            });
+            return res.status(400).json({ success: false, message: 'Bu platforma uchun bunday xizmat yoq' });
         }
-
         if (quantity < 1 || quantity > 1000000) {
-            return res.status(400).json({
-                success: false,
-                message: 'Miqdor 1 dan 1000000 gacha bolishi kerak'
-            });
+            return res.status(400).json({ success: false, message: 'Miqdor kamida 1 bolishi kerak' });
         }
 
-        const order = new Order({
+        const order = await Order.create({
             userId: req.userId,
-            platform: platform,
-            service: service,
-            target: target,
-            quantity: quantity
+            platform,
+            service,
+            target,
+            quantity
         });
-        await order.save();
 
         res.status(201).json({
             success: true,
             message: 'Buyurtma yaratildi',
-            order: {
-                id: order._id,
-                platform: order.platform,
-                service: order.service,
-                target: order.target,
-                quantity: order.quantity,
-                status: order.status,
-                createdAt: order.createdAt
-            }
+            order
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server xatosi',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
+    }
+});
+
+router.get('/', authenticateToken, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const allUserOrders = await Order.find({ userId: req.userId });
+        
+        // Sorting manually: newest first
+        allUserOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        const paginatedOrders = allUserOrders.slice(skip, skip + limit);
+        const total = allUserOrders.length;
+
+        // Xuddi eski mantiq kabi
+        const formatted = paginatedOrders.map(o => ({
+            ...o,
+            completedCount: o.completed
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
     }
 });
 
@@ -116,68 +109,38 @@ router.get('/my-orders', authenticateToken, async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const orders = await Order.find({ userId: req.userId })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
+        const allUserOrders = await Order.find({ userId: req.userId });
+        allUserOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        const total = await Order.countDocuments({ userId: req.userId });
+        const paginatedOrders = allUserOrders.slice(skip, skip + limit);
+        const total = allUserOrders.length;
 
         res.json({
             success: true,
-            orders: orders,
-            pagination: {
-                page: page,
-                limit: limit,
-                total: total,
-                pages: Math.ceil(total / limit)
-            }
+            orders: paginatedOrders,
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server xatosi',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
     }
 });
 
 router.get('/status/:orderId', authenticateToken, async (req, res) => {
     try {
-        const order = await Order.findOne({
-            _id: req.params.orderId,
-            userId: req.userId
-        });
+        const allUserOrders = await Order.find({ userId: req.userId });
+        const order = allUserOrders.find(o => o._id === req.params.orderId);
 
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Buyurtma topilmadi'
-            });
-        }
+        if (!order) return res.status(404).json({ success: false, message: 'Buyurtma topilmadi' });
 
         res.json({
             success: true,
             order: {
-                id: order._id,
-                platform: order.platform,
-                service: order.service,
-                target: order.target,
-                quantity: order.quantity,
-                completed: order.completed,
-                status: order.status,
-                progress: Math.round((order.completed / order.quantity) * 100),
-                createdAt: order.createdAt,
-                startedAt: order.startedAt,
-                completedAt: order.completedAt
+                ...order,
+                progress: Math.round((order.completed / order.quantity) * 100)
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server xatosi',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
     }
 });
 
@@ -192,58 +155,28 @@ router.get('/stats', authenticateToken, async (req, res) => {
 
         res.json({
             success: true,
-            stats: {
-                totalOrders: totalOrders,
-                pendingOrders: pendingOrders,
-                processingOrders: processingOrders,
-                completedOrders: completedOrders,
-                failedOrders: failedOrders,
-                activeBotAccounts: botAccounts
-            }
+            stats: { totalOrders, pendingOrders, processingOrders, completedOrders, failedOrders, activeBotAccounts: botAccounts },
+            total: totalOrders,
+            processing: processingOrders,
+            completed: completedOrders
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server xatosi',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
     }
 });
 
 router.delete('/cancel/:orderId', authenticateToken, async (req, res) => {
     try {
-        const order = await Order.findOne({
-            _id: req.params.orderId,
-            userId: req.userId
-        });
+        const allUserOrders = await Order.find({ userId: req.userId });
+        const order = allUserOrders.find(o => o._id === req.params.orderId);
 
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Buyurtma topilmadi'
-            });
-        }
+        if (!order) return res.status(404).json({ success: false, message: 'Buyurtma topilmadi' });
+        if (order.status !== 'pending') return res.status(400).json({ success: false, message: 'Faqat kutilayotganlarni bekor qilish mumkin' });
 
-        if (order.status !== 'pending') {
-            return res.status(400).json({
-                success: false,
-                message: 'Faqat kutilayotgan buyurtmalarni bekor qilish mumkin'
-            });
-        }
-
-        order.status = 'cancelled';
-        await order.save();
-
-        res.json({
-            success: true,
-            message: 'Buyurtma bekor qilindi'
-        });
+        await Order.update(order._id, { status: 'cancelled' });
+        res.json({ success: true, message: 'Buyurtma bekor qilindi' });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server xatosi',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
     }
 });
 

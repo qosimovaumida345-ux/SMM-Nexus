@@ -1,94 +1,58 @@
-const mongoose = require('mongoose');
+const db = require('../utils/db');
 
-const orderSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    platform: {
-        type: String,
-        required: true,
-        enum: [
-            'instagram', 'tiktok', 'youtube', 'telegram', 'roblox',
-            'twitter', 'facebook', 'discord', 'twitch', 'spotify',
-            'snapchat', 'pinterest', 'linkedin', 'reddit', 'threads'
-        ]
-    },
-    service: {
-        type: String,
-        required: true,
-        enum: [
-            'followers', 'likes', 'views', 'comments', 'shares',
-            'subscribers', 'members', 'reactions', 'reposts',
-            'saves', 'impressions', 'plays', 'friends',
-            'connections', 'upvotes', 'listeners'
-        ]
-    },
-    target: {
-        type: String,
-        required: true
-    },
-    quantity: {
-        type: Number,
-        required: true,
-        min: 1
-    },
-    completed: {
-        type: Number,
-        default: 0
-    },
-    status: {
-        type: String,
-        default: 'pending',
-        enum: ['pending', 'queued', 'processing', 'completed', 'failed', 'cancelled', 'partial']
-    },
-    priority: {
-        type: Number,
-        default: 0
-    },
-    errorLog: {
-        type: String,
-        default: ''
-    },
-    startedAt: {
-        type: Date
-    },
-    completedAt: {
-        type: Date
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
+class Order {
+    static async create(orderData) {
+        const newOrder = {
+            _id: db.generateId(),
+            userId: orderData.userId,
+            platform: orderData.platform,
+            service: orderData.service,
+            target: orderData.target,
+            quantity: orderData.quantity,
+            completed: 0,
+            status: 'pending', // pending, processing, completed, failed, cancelled
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            createdAt: new Date().toISOString()
+        };
+
+        db.data.orders.push(newOrder);
+        db.save();
+        return newOrder;
     }
-});
 
-orderSchema.methods.markProcessing = function () {
-    this.status = 'processing';
-    this.startedAt = new Date();
-    return this.save();
-};
-
-orderSchema.methods.markCompleted = function () {
-    this.status = 'completed';
-    this.completed = this.quantity;
-    this.completedAt = new Date();
-    return this.save();
-};
-
-orderSchema.methods.markFailed = function (errorMessage) {
-    this.status = 'failed';
-    this.errorLog = errorMessage;
-    return this.save();
-};
-
-orderSchema.methods.incrementProgress = function (amount) {
-    this.completed = Math.min(this.completed + amount, this.quantity);
-    if (this.completed >= this.quantity) {
-        this.status = 'completed';
-        this.completedAt = new Date();
+    static async findById(id) {
+        return db.data.orders.find(o => o._id === id);
     }
-    return this.save();
-};
 
-module.exports = mongoose.model('Order', orderSchema);
+    static async find(query) {
+        let results = db.data.orders;
+        
+        if (query.userId) {
+            results = results.filter(o => o.userId === query.userId);
+        }
+        if (query.status) {
+            results = results.filter(o => o.status === query.status);
+        }
+        
+        return results;
+    }
+
+    static async update(id, updates) {
+        const idx = db.data.orders.findIndex(o => o._id === id);
+        if (idx !== -1) {
+            db.data.orders[idx] = { ...db.data.orders[idx], ...updates };
+            db.save();
+            return db.data.orders[idx];
+        }
+        return null;
+    }
+
+    static async countDocuments(query) {
+        let results = await this.find(query);
+        return results.length;
+    }
+}
+
+module.exports = Order;

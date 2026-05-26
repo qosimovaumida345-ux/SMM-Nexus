@@ -1,110 +1,54 @@
-const mongoose = require('mongoose');
+const db = require('../utils/db');
 
-const botAccountSchema = new mongoose.Schema({
-    platform: {
-        type: String,
-        required: true,
-        enum: [
-            'instagram', 'tiktok', 'youtube', 'telegram', 'roblox',
-            'twitter', 'facebook', 'discord', 'twitch', 'spotify',
-            'snapchat', 'pinterest', 'linkedin', 'reddit', 'threads',
-            'google'
-        ]
-    },
-    username: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true
-    },
-    password: {
-        type: String,
-        required: true
-    },
-    displayName: {
-        type: String
-    },
-    firstName: {
-        type: String
-    },
-    lastName: {
-        type: String
-    },
-    birthday: {
-        year: Number,
-        month: Number,
-        day: Number
-    },
-    proxyId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Proxy'
-    },
-    cookies: {
-        type: String,
-        default: ''
-    },
-    userAgent: {
-        type: String
-    },
-    status: {
-        type: String,
-        default: 'active',
-        enum: ['active', 'banned', 'suspended', 'cooldown', 'unverified', 'dead']
-    },
-    actionsToday: {
-        type: Number,
-        default: 0
-    },
-    maxActionsPerDay: {
-        type: Number,
-        default: 50
-    },
-    lastActionAt: {
-        type: Date
-    },
-    lastResetAt: {
-        type: Date,
-        default: Date.now
-    },
-    ownerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
-});
+class BotAccount {
+    static async create(accountData) {
+        const newBot = {
+            _id: db.generateId(),
+            platform: accountData.platform,
+            username: accountData.username,
+            email: accountData.email || '',
+            password: accountData.password || '',
+            displayName: accountData.displayName || '',
+            firstName: accountData.firstName || '',
+            lastName: accountData.lastName || '',
+            birthday: accountData.birthday || {},
+            userAgent: accountData.userAgent || '',
+            cookies: accountData.cookies || '',
+            proxyId: accountData.proxyId || null,
+            ownerId: accountData.ownerId,
+            status: 'active', // active, shadow_banned, banned, verification_required
+            createdAt: new Date().toISOString()
+        };
 
-botAccountSchema.methods.canPerformAction = function () {
-    const now = new Date();
-    const lastReset = new Date(this.lastResetAt);
-    const hoursSinceReset = (now - lastReset) / (1000 * 60 * 60);
-
-    if (hoursSinceReset >= 24) {
-        this.actionsToday = 0;
-        this.lastResetAt = now;
+        db.data.botAccounts.push(newBot);
+        db.save();
+        return newBot;
     }
 
-    return this.status === 'active' && this.actionsToday < this.maxActionsPerDay;
-};
+    static async findById(id) {
+        return db.data.botAccounts.find(b => b._id === id);
+    }
 
-botAccountSchema.methods.recordAction = function () {
-    this.actionsToday += 1;
-    this.lastActionAt = new Date();
-    return this.save();
-};
+    static async countDocuments(query) {
+        let count = 0;
+        for (let b of db.data.botAccounts) {
+            if (query.ownerId && b.ownerId !== query.ownerId) continue;
+            if (query.platform && b.platform !== query.platform) continue;
+            if (query.status && b.status !== query.status) continue;
+            count++;
+        }
+        return count;
+    }
 
-botAccountSchema.methods.markBanned = function () {
-    this.status = 'banned';
-    return this.save();
-};
+    static async update(id, updates) {
+        const idx = db.data.botAccounts.findIndex(b => b._id === id);
+        if (idx !== -1) {
+            db.data.botAccounts[idx] = { ...db.data.botAccounts[idx], ...updates };
+            db.save();
+            return db.data.botAccounts[idx];
+        }
+        return null;
+    }
+}
 
-botAccountSchema.methods.setCooldown = function () {
-    this.status = 'cooldown';
-    return this.save();
-};
-
-module.exports = mongoose.model('BotAccount', botAccountSchema);
+module.exports = BotAccount;

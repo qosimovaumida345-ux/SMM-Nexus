@@ -1,51 +1,53 @@
-const mongoose = require('mongoose');
+const db = require('../utils/db');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-    username: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        minlength: 3,
-        maxlength: 30
-    },
-    password: {
-        type: String,
-        required: true,
-        minlength: 6
-    },
-    balance: {
-        type: Number,
-        default: 0
-    },
-    isActive: {
-        type: Boolean,
-        default: true
-    },
-    workerOnline: {
-        type: Boolean,
-        default: false
-    },
-    lastLogin: {
-        type: Date,
-        default: Date.now
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
+class User {
+    static async findOne(query) {
+        if (query.username) {
+            return db.data.users.find(u => u.username === query.username.toLowerCase());
+        }
+        if (query._id) {
+            return db.data.users.find(u => u._id === query._id);
+        }
+        return null;
     }
-});
 
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
-    const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-});
+    static async findById(id) {
+        return db.data.users.find(u => u._id === id);
+    }
 
-userSchema.methods.comparePassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-};
+    static async create(userData) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(userData.password, salt);
 
-module.exports = mongoose.model('User', userSchema);
+        const newUser = {
+            _id: db.generateId(),
+            username: userData.username.toLowerCase(),
+            password: hashedPassword,
+            balance: 0,
+            workerOnline: false,
+            lastLogin: null,
+            createdAt: new Date().toISOString()
+        };
+
+        db.data.users.push(newUser);
+        db.save();
+        return newUser;
+    }
+
+    static async update(id, updates) {
+        const idx = db.data.users.findIndex(u => u._id === id);
+        if (idx !== -1) {
+            db.data.users[idx] = { ...db.data.users[idx], ...updates };
+            db.save();
+            return db.data.users[idx];
+        }
+        return null;
+    }
+
+    static async comparePassword(user, enteredPassword) {
+        return await bcrypt.compare(enteredPassword, user.password);
+    }
+}
+
+module.exports = User;
