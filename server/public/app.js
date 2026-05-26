@@ -134,7 +134,8 @@ async function handleRegister() {
 
 async function checkAuth() {
     try {
-        currentUser = await api('/api/auth/me');
+        const response = await api('/api/auth/me');
+        currentUser = response.user;
         document.getElementById('display-username').textContent = currentUser.username;
         document.getElementById('user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
         showScreen('dashboard-screen');
